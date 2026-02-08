@@ -1,0 +1,5 @@
+# Web Frontend
+
+SvelteKit web frontend for the Tip application.
+
+This directory contains the web-based user interface for managing passwords and tasks through a browser.

@@ -1,0 +1,5 @@
+# Tests
+
+Test suites and test utilities for the Tip project.
+
+This directory contains additional test files, test data, and test utilities that supplement the unit tests found alongside the source code.
