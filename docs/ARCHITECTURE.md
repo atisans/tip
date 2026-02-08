@@ -807,12 +807,12 @@ GET    /sync/last-modified/:vaultId # Get last modified timestamp
 - **Containerization**: Docker + Docker Compose
 
 ### Web Platform (Future)
-- **Frontend**: Next.js (React-based)
+- **Frontend**: SvelteKit
 - **Styling**: Tailwind CSS
-- **State Management**: Zustand or Redux Toolkit
-- **HTTP Client**: Axios or Fetch API
-- **Real-time**: WebSockets with Socket.io
-- **Build**: Vite or Next.js build system
+- **State Management**: Svelte stores
+- **HTTP Client**: Fetch API
+- **Real-time**: WebSockets
+- **Build**: Vite build system
 
 ## Deployment Architecture
 
