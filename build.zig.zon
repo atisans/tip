@@ -1,0 +1,16 @@
+.{
+    .name = .tip,
+    .version = "0.0.0",
+    .fingerprint = 0x4883b84ca584213a, // Changing this has security and trust implications.
+    .minimum_zig_version = "0.15.2",
+    .dependencies = .{},
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        // For example...
+        //"LICENSE",
+        //"README.md",
+    },
+}
+// ssh local_server@100.121.105.19
