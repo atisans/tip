@@ -12,32 +12,22 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
         }),
     });
-
     b.installArtifact(exe);
 
-    const run_step = b.step("run", "Run the app");
     const run_cmd = b.addRunArtifact(exe);
-    run_step.dependOn(&run_cmd.step);
     run_cmd.step.dependOn(b.getInstallStep());
 
     if (b.args) |args| {
         run_cmd.addArgs(args);
     }
+    b.step("run", "Run the app").dependOn(&run_cmd.step);
 
-    const exe_tests = b.addTest(.{
-        .root_module = exe.root_module,
-    });
-
-    // A run step that will run the exe test executable.
-    const run_exe_tests = b.addRunArtifact(exe_tests);
-
-    // Generate test runner file
+    // Generate test runner that imports all .zig files under src/
     const auto_test_file = generate_test_runner(b, "src") catch |err| {
         std.log.err("Failed to generate test runner: {}", .{err});
         return;
     };
 
-    // Test runner that includes all module tests
     const all_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = auto_test_file,
@@ -45,33 +35,11 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
         }),
     });
-    const run_auto_tests = b.addRunArtifact(all_tests);
-
-    const cleanup = b.allocator.create(std.Build.Step) catch @panic("OOM");
-    cleanup.* = std.Build.Step.init(.{
-        .id = .custom,
-        .name = "cleanup test runner",
-        .owner = b,
-        .makeFn = cleanup_test_runner,
-    });
-
-    cleanup.dependOn(&run_auto_tests.step);
-
-    const test_step = b.step("test", "Run tests with cleanup");
-    test_step.dependOn(&run_exe_tests.step);
-    test_step.dependOn(cleanup);
-}
-
-fn cleanup_test_runner() !void {
-    std.fs.cwd().deleteFile("auto_test_runner.zig") catch |err| {
-        if (err != error.FileNotFound) {
-            std.log.warn("Failed to cleanup test runner: {}", .{err});
-        }
-    };
+    b.step("test", "Run all tests").dependOn(&b.addRunArtifact(all_tests).step);
 }
 
 fn generate_test_runner(b: *std.Build, src_dir: []const u8) !std.Build.LazyPath {
-    var files: std.ArrayList([]const u8) = .{};
+    var files: std.ArrayList([]const u8) = .empty;
     defer {
         for (files.items) |f| b.allocator.free(f);
         files.deinit(b.allocator);
@@ -79,7 +47,7 @@ fn generate_test_runner(b: *std.Build, src_dir: []const u8) !std.Build.LazyPath 
 
     try collect_files(b, src_dir, b.allocator, &files);
 
-    var content: std.ArrayList(u8) = .{};
+    var content: std.ArrayList(u8) = .empty;
     defer content.deinit(b.allocator);
 
     const w = content.writer(b.allocator);
@@ -113,7 +81,7 @@ fn collect_files(b: *std.Build, dir: []const u8, gpa: std.mem.Allocator, files: 
     var it = d.iterate();
     while (try it.next()) |e| {
         if (e.kind == .file and std.mem.endsWith(u8, e.name, ".zig")) {
-            if (e.name[0] == '.' or std.mem.eql(u8, e.name, "tests.zig")) continue;
+            if (e.name[0] == '.') continue;
             const p = try std.fs.path.join(gpa, &.{ dir, e.name });
             try files.append(gpa, p);
         } else if (e.kind == .directory) {

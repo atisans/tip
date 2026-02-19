@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const item = struct {
+const Item = struct {
     id: u32,
     task: []const u8,
     done: bool,
@@ -10,7 +10,7 @@ const item = struct {
 
 pub const Task = struct {
     allocator: std.mem.Allocator,
-    list: std.ArrayList(item),
+    list: std.ArrayList(Item),
 
     pub fn init(allocator: std.mem.Allocator) Task {
         return .{
@@ -24,7 +24,7 @@ pub const Task = struct {
     }
 
     pub fn add(self: *@This(), task: []const u8) !void {
-        const new_task: item = .{
+        const new_task: Item = .{
             .done = false,
             .id = @intCast(self.list.items.len + 1),
             .task = task,
@@ -75,18 +75,16 @@ pub const Task = struct {
         try file.writeAll(string);
     }
 
-    pub fn get_file(self: *@This(), filepath: []const u8) ![]const u8 {
+    pub fn load(self: *@This(), filepath: []const u8) ![]const u8 {
         const file = try std.fs.cwd().openFile(filepath, .{});
         defer file.close();
 
         const stat = try file.stat();
 
         const contents = try self.allocator.alloc(u8, stat.size);
-        defer self.allocator.free(contents);
 
         _ = try file.read(contents);
 
-        // const parsed = try std.json.parseFromSlice(struct {tasks:[]item}, allocator, s: []const u8, options: ParseOptions)
         return contents;
     }
 };
@@ -175,10 +173,11 @@ test "get file" {
     const filepath = try std.mem.concat(allocator, u8, &.{ current_dir, "/input.json" });
     defer allocator.free(filepath);
 
-    try std.testing.expectError(error.FileNotFound, tasks.get_file(filepath));
+    try std.testing.expectError(error.FileNotFound, tasks.load(filepath));
 
     try tasks.add("New task");
     try tasks.save_to_file(filepath);
 
-    _ = try tasks.get_file(filepath);
+    const data = try tasks.load(filepath);
+    defer allocator.free(data);
 }
