@@ -21,6 +21,9 @@ jobs:
         with:
           version: 0.15.2
 
+      - name: Test
+        run: zig build test --summary all
+
       - name: Build Windows x86_64
         run: zig build -Dtarget=x86_64-windows -Doptimize=ReleaseSafe
 
