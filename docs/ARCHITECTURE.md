@@ -82,32 +82,6 @@ tip/
 ├── docker-compose.yml       # Docker compose setup
 └── README.md
 ```
-tip/
-├── cmd/
-│   └── tip/
-│       ├── main.go          (CLI entry point)
-│       └── main_test.go
-├── pkg/
-│   ├── core/                # Shared business logic
-│   │   ├── task.go          # Task manager
-│   │   ├── password.go      # Password manager
-│   │   └── crypto.go        # Encryption utilities
-│   ├── storage/             # Storage layer
-│   │   ├── local.go         # Local file storage
-│   │   ├── remote.go        # Remote API client
-│   │   └── interfaces.go    # Storage abstractions
-│   └── api/                 # Server API
-│       ├── server.go        # HTTP server
-│       ├── handlers.go      # API handlers
-│       └── middleware.go    # Auth, logging, etc.
-├── docs/                    # Documentation
-├── tip.go                   # Task manager core (to be refactored)
-├── tip_test.go              # Task manager tests
-├── go.mod
-├── .gitignore
-├── LICENSE
-└── README.md
-```
 
 ## Current Implementation
 
@@ -125,6 +99,95 @@ tip/
 - JSON file format
 - Flat file storage
 - No encryption currently
+
+## Architecture Overview
+
+### Multi-Tier Architecture
+
+#### Tier 1: Client Applications
+```
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│   CLI Tool      │  │   Web Platform  │  │ Browser Extension│
+│   (tip)         │  │   (tip-web)     │  │   (future)       │
+└─────────────────┘  └─────────────────┘  └─────────────────┘
+         │                     │                     │
+         └─────────────────────┼─────────────────────┘
+                               │
+                    ┌─────────────────┐
+                    │   HTTP/HTTPS    │
+                    │   Communication │
+                    └─────────────────┘
+```
+
+#### Tier 2: Server Infrastructure
+```
+                    ┌─────────────────┐
+                    │   Web Server    │
+                    │   (tip-server)  │
+                    └─────────────────┘
+                               │
+                    ┌─────────────────┐
+                    │   Authentication│
+                    │   (JWT/OAuth)   │
+                    └─────────────────┘
+                               │
+                    ┌─────────────────┐
+                    │   Business Logic│
+                    │   (Core APIs)   │
+                    └─────────────────┘
+                               │
+                    ┌─────────────────┐
+                    │   Database      │
+                    │   (SQLite)      │
+                    └─────────────────┘
+```
+
+#### Tier 3: Storage Layer
+```
+                    ┌─────────────────┐
+                    │   Storage       │
+                    │   Abstraction   │
+                    └─────────────────┘
+                               │
+         ┌─────────────────────┼─────────────────────┐
+         │                     │                     │
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│   JSON Files    │  │   SQLite DB     │  │   Remote API    │
+│   (Local)       │  │   (Local/Server)│  │   (Server)      │
+└─────────────────┘  └─────────────────┘  └─────────────────┘
+```
+
+### Operation Modes
+
+#### Local Mode (Offline-First)
+```
+CLI → Storage Interface → JSON/SQLite → Encrypted Vault
+```
+- **Data Flow**: Direct local storage access
+- **Encryption**: Client-side encryption before storage
+- **Performance**: Maximum speed, no network latency
+- **Security**: Data never leaves user's machine
+- **Use Case**: Personal usage, high-security environments
+
+#### Remote Mode (Collaborative)
+```
+CLI → HTTP Client → Server API → Authentication → Database
+```
+- **Data Flow**: Encrypted data sent to server
+- **Encryption**: End-to-end encryption, server stores encrypted data
+- **Performance**: Network latency but enables collaboration
+- **Security**: Zero-knowledge architecture
+- **Use Case**: Team collaboration, multi-device sync
+
+#### Hybrid Mode (Best of Both)
+```
+CLI → Local Cache → Remote Sync → Conflict Resolution
+```
+- **Data Flow**: Local storage with periodic remote sync
+- **Encryption**: Local encryption + remote encrypted backup
+- **Performance**: Local speed with remote reliability
+- **Security**: Redundant encrypted storage
+- **Use Case**: Power users, reliability requirements
 
 ## Detailed Architecture
 
@@ -488,19 +551,19 @@ tip <global-flags> <command> <subcommand> [args] [flags]
 ```
 tip config init                    # Initialize configuration
 tip config show                    # Show current configuration
-tip config set <key> <value>       # Set configuration value
-tip config get <key>               # Get configuration value
+tip config set --key=<key> --value=<value>       # Set configuration value
+tip config get --key=<key>               # Get configuration value
 tip config reset                   # Reset to defaults
 ```
 
 #### Vault Management
 ```
-tip vault init <name>              # Initialize new vault
+tip vault init --name=<name>              # Initialize new vault
 tip vault list                     # List all vaults
-tip vault switch <name>           # Switch to vault
-tip vault delete <name>           # Delete vault
-tip vault backup <path>           # Backup vault
-tip vault restore <path>          # Restore vault
+tip vault switch --name=<name>           # Switch to vault
+tip vault delete --name=<name>           # Delete vault
+tip vault backup --path=<path>           # Backup vault
+tip vault restore --path=<path>          # Restore vault
 tip vault info                     # Show vault information
 ```
 
@@ -517,149 +580,58 @@ tip lock                           # Lock local vault
 #### Password Management Commands
 ```
 # Basic CRUD
-tip password add <name>            # Add new password
-tip password get <name>            # Get password details
-tip password edit <name>           # Edit password
-tip password delete <name>        # Delete password
+tip password add --name=<name>            # Add new password
+tip password get --name=<name>            # Get password details
+tip password edit --name=<name>           # Edit password
+tip password delete --name=<name>        # Delete password
 tip password list                  # List all passwords
 
 # Advanced features
-tip password search <query>       # Search passwords
+tip password search --query=<query>       # Search passwords
 tip password generate              # Generate password
-tip password copy <name>           # Copy password to clipboard
-tip password share <name> <user>   # Share password with user
+tip password copy --name=<name>           # Copy password to clipboard
+tip password share --name=<name> --user=<user>   # Share password with user
 
 # Organization
 tip password category list         # List categories
-tip password category add <name>  # Add category
+tip password category add --name=<name>  # Add category
 tip password tag list              # List tags
-tip password tag add <name> <tag>  # Add tag to password
+tip password tag add --name=<name> --tag=<tag>  # Add tag to password
 ```
 
 #### Task Management Commands
 ```
 # Basic CRUD
-tip task add "description"         # Add new task
+tip task add --description="..."         # Add new task
 tip task list                      # List all tasks
-tip task get <id>                  # Get task details
-tip task edit <id>                 # Edit task
-tip task delete <id>               # Delete task
+tip task get --id=<id>                  # Get task details
+tip task edit --id=<id>                 # Edit task
+tip task delete --id=<id>               # Delete task
 
 # Task operations
-tip task complete <id>             # Mark task as complete
-tip task start <id>                # Mark task as in progress
-tip task assign <id> <user>        # Assign task to user
+tip task complete --id=<id>             # Mark task as complete
+tip task start --id=<id>                # Mark task as in progress
+tip task assign --id=<id> --user=<user>        # Assign task to user
 
 # Organization
-tip task list --status pending     # List tasks by status
-tip task list --priority high      # List tasks by priority
-tip task list --due today          # List tasks due today
+tip task list --status=pending     # List tasks by status
+tip task list --priority=high      # List tasks by priority
+tip task list --due=today          # List tasks due today
 ```
 
 #### Token Management Commands
 ```
 tip token create                   # Create CLI access token
 tip token list                     # List active tokens
-tip token revoke <id>              # Revoke token
-tip token info <id>                # Get token details
+tip token revoke --id=<id>              # Revoke token
+tip token info --id=<id>                # Get token details
 ```
 
 #### Category Management Commands
 ```
 tip category list                  # List categories
-tip category add <name>            # Add new category
-tip category delete <name>         # Delete category
-```
-
-#### Synchronization Commands
-```
-tip sync                           # Sync with remote server
-tip sync status                    # Show sync status
-tip sync force                     # Force full sync
-tip export <format>                # Export data (json, csv)
-tip import <file>                  # Import data
-```
-tip <global-flags> <command> <subcommand> [args] [flags]
-```
-
-#### Global Flags
-```
---config <path>     # Configuration file path
---mode <local|remote> # Operation mode
---storage <json|sqlite> # Storage backend
---vault <name>      # Vault name (multi-vault support)
---verbose           # Verbose output
---quiet             # Minimal output
---help              # Show help
---version           # Show version
-```
-
-#### Configuration Commands
-```
-tip config init                    # Initialize configuration
-tip config show                    # Show current configuration
-tip config set <key> <value>       # Set configuration value
-tip config get <key>               # Get configuration value
-tip config reset                   # Reset to defaults
-```
-
-#### Vault Management
-```
-tip vault init <name>              # Initialize new vault
-tip vault list                     # List all vaults
-tip vault switch <name>           # Switch to vault
-tip vault delete <name>           # Delete vault
-tip vault backup <path>           # Backup vault
-tip vault restore <path>          # Restore vault
-tip vault info                     # Show vault information
-```
-
-#### Authentication Commands
-```
-tip auth login                     # Login to remote server (OAuth)
-tip auth logout                    # Logout from remote server
-tip auth status                    # Show authentication status
-tip auth refresh                   # Refresh authentication token
-tip unlock                         # Unlock local vault
-tip lock                           # Lock local vault
-```
-
-#### Password Management Commands
-```
-tip password add <name>            # Add new password
-tip password get <name>            # Get password details
-tip password edit <name>           # Edit password
-tip password delete <name>        # Delete password
-tip password list                  # List all passwords
-tip password search <query>       # Search passwords
-tip password generate              # Generate password
-tip password copy <name>           # Copy password to clipboard
-```
-
-#### Task Management Commands
-```
-tip task add "description"         # Add new task
-tip task list                      # List all tasks
-tip task get <id>                  # Get task details
-tip task edit <id>                 # Edit task
-tip task delete <id>               # Delete task
-tip task complete <id>             # Mark task as complete
-tip task start <id>                # Mark task as in progress
-```
-
-#### Token Management Commands
-```
-tip token create                   # Create CLI access token
-tip token list                     # List active tokens
-tip token revoke <id>              # Revoke token
-tip token info <id>                # Get token details
-```
-
-#### Category Management Commands
-```
-tip category list                  # List categories
-tip category add <name>            # Add new category
-tip category delete <name>         # Delete category
+tip category add --name=<name>            # Add new category
+tip category delete --name=<name>         # Delete category
 ```
 
 #### Synchronization Commands
@@ -671,10 +643,10 @@ tip sync force                     # Force full sync
 
 #### Data Management Commands
 ```
-tip export <format>                # Export data (json, csv)
-tip import <file>                  # Import data
+tip export --format=<format>       # Export data (json, csv)
+tip import --file=<file>           # Import data
 tip backup                         # Create backup
-tip restore <path>                 # Restore backup
+tip restore --path=<path>          # Restore backup
 ```
 
 ## Server API Design

@@ -2,17 +2,17 @@
 
 ## Command Structure
 
-```
+```bash
 tip <global-flags> <command> <subcommand> [args] [flags]
 ```
 
 ## Global Flags
 
-```
---config <path>     # Configuration file path
---mode <local|remote> # Operation mode
---storage <json|sqlite> # Storage backend
---vault <name>      # Vault name (multi-vault support)
+```bash
+--config=<path>     # Configuration file path
+--mode=<local|remote> # Operation mode
+--storage=<json|sqlite> # Storage backend
+--vault=<name>      # Vault name (multi-vault support)
 --verbose           # Verbose output
 --quiet             # Minimal output
 --help              # Show help
@@ -21,29 +21,29 @@ tip <global-flags> <command> <subcommand> [args] [flags]
 
 ## Configuration Commands
 
-```
+```bash
 tip config init                    # Initialize configuration
 tip config show                    # Show current configuration
-tip config set <key> <value>       # Set configuration value
-tip config get <key>               # Get configuration value
+tip config set --key=<key> --value=<value>       # Set configuration value
+tip config get --key=<key>               # Get configuration value
 tip config reset                   # Reset to defaults
 ```
 
 ## Vault Management
 
-```
-tip vault init <name>              # Initialize new vault
+```bash
+tip vault init --name=<name>              # Initialize new vault
 tip vault list                     # List all vaults
-tip vault switch <name>            # Switch to vault
-tip vault delete <name>            # Delete vault
-tip vault backup <path>            # Backup vault
-tip vault restore <path>           # Restore vault
+tip vault switch --name=<name>            # Switch to vault
+tip vault delete --name=<name>            # Delete vault
+tip vault backup --path=<path>            # Backup vault
+tip vault restore --path=<path>           # Restore vault
 tip vault info                     # Show vault information
 ```
 
 ## Authentication Commands
 
-```
+```bash
 tip auth login                     # Login to remote server
 tip auth logout                    # Logout from remote server
 tip auth status                    # Show authentication status
@@ -56,68 +56,67 @@ tip lock                           # Lock local vault
 
 ### Basic CRUD
 
-```
-tip password add <name>            # Add new password
-tip password get <name>            # Get password details
-tip password edit <name>           # Edit password
-tip password delete <name>         # Delete password
+```bash
+tip password add --name=<name>            # Add new password
+tip password get --name=<name>            # Get password details
+tip password edit --name=<name>           # Edit password
+tip password delete --name=<name>         # Delete password
 tip password list                  # List all passwords
 ```
 
 ### Advanced Features
 
-```
-tip password search <query>        # Search passwords
-tip password generate              # Generate password
-tip password copy <name>           # Copy password to clipboard
-tip password share <name> <user>   # Share password with user
+```bash
+tip password search --query=<query>        # Search passwords
+tip password copy --name=<name>           # Copy password to clipboard
+tip password share --name=<name> --user=<user>   # Share password with user
 ```
 
 ### Organization
 
-```
+```bash
 tip password category list         # List categories
-tip password category add <name>   # Add category
+tip password category add --name=<name>   # Add category
 tip password tag list              # List tags
-tip password tag add <name> <tag>  # Add tag to password
+tip password tag add --name=<name> --tag=<tag>  # Add tag to password
 ```
 
 ## Task Management Commands
 
 ### Basic CRUD
 
-```
-tip task add "description"         # Add new task
+```bash
+tip task add --description="..."         # Add new task
 tip task list                      # List all tasks
-tip task get <id>                  # Get task details
-tip task edit <id>                 # Edit task
-tip task delete <id>               # Delete task
+tip task get --id=<id>                  # Get task details
+tip task edit --id=<id>                 # Edit task
+tip task delete --id=<id>               # Delete task
 ```
 
 ### Task Operations
 
-```
-tip task complete <id>             # Mark task as complete
-tip task start <id>                # Mark task as in progress
-tip task assign <id> <user>        # Assign task to user
+```bash
+tip task complete --id=<id>             # Mark task as complete
+tip task start --id=<id>                # Mark task as in progress
+tip task assign --id=<id> --user=<user>        # Assign task to user
 ```
 
 ### Organization
 
-```
-tip task list --status pending     # List tasks by status
-tip task list --priority high      # List tasks by priority
-tip task list --due today          # List tasks due today
+```bash
+tip task list --status=pending     # List tasks by status
+tip task list --priority=high      # List tasks by priority
+tip task list --due=today          # List tasks due today
 ```
 
 ## Synchronization Commands
 
-```
+```bash
 tip sync                           # Sync with remote server
 tip sync status                    # Show sync status
 tip sync force                     # Force full sync
-tip export <format>                # Export data (json, csv)
-tip import <file>                  # Import data
+tip export --format=<format>                # Export data (json, csv)
+tip import --file=<file>                  # Import data
 ```
 
 ## Examples
@@ -128,13 +127,13 @@ tip import <file>                  # Import data
 tip config init
 
 # Create your first vault
-tip vault init personal
+tip vault init --name=personal
 
 # Add a password
-tip password add github --username myuser
+tip password add --name=github --username=myuser
 
 # Add a task
-tip task add "Review code" --priority high --due tomorrow
+tip task add --description="Review code" --priority=high --due=tomorrow
 
 # List all passwords in current vault
 tip password list
@@ -143,21 +142,21 @@ tip password list
 tip task list
 
 # Complete a task
-tip task complete 1
+tip task complete --id=1
 ```
 
 ### Working with Multiple Vaults
 ```bash
 # Create separate vaults for different contexts
-tip vault init work
-tip vault init personal
-tip vault init finance
+tip vault init --name=work
+tip vault init --name=personal
+tip vault init --name=finance
 
 # Switch between vaults
-tip vault switch work
+tip vault switch --name=work
 
 # Add password to specific vault without switching
-tip --vault finance password add "bank_account"
+tip --vault=finance password add --name="bank_account"
 
 # List vaults
 tip vault list
@@ -166,61 +165,61 @@ tip vault list
 ### Password Management
 ```bash
 # Generate a random password
-tip password generate --length 32 --special
+tip password generate --length=32 --special
 
 # Add with specific category
-tip password add github --username alice --category development
+tip password add --name=github --username=alice --category=development
 
 # Search passwords
-tip password search github
+tip password search --query=github
 
 # Copy password to clipboard
-tip password copy github
+tip password copy --name=github
 
 # Share password with team member (remote mode)
-tip password share github alice@example.com
+tip password share --name=github --user=alice@example.com
 
 # Tag a password
-tip password tag add github security important
+tip password tag add --name=github --tag=important
 ```
 
 ### Task Workflows
 ```bash
 # Add task with multiple attributes
-tip task add "Complete project" --priority high --due "2025-01-15" --category work
+tip task add --description="Complete project" --priority=high --due="2025-01-15" --category=work
 
 # Start working on a task
-tip task start 1
+tip task start --id=1
 
 # View task details
-tip task get 1
+tip task get --id=1
 
 # Assign to team member (remote mode)
-tip task assign 1 alice@example.com
+tip task assign --id=1 --user=alice@example.com
 
 # List tasks by status
-tip task list --status in_progress
+tip task list --status=in_progress
 
 # List high priority tasks due today
-tip task list --priority high --due today
+tip task list --priority=high --due=today
 ```
 
 ### Data Management
 ```bash
 # Create backup of vault
-tip vault backup ~/backups/personal.bak
+tip vault backup --path=~/backups/personal.bak
 
 # Restore from backup
-tip vault restore ~/backups/personal.bak
+tip vault restore --path=~/backups/personal.bak
 
 # Export all data as JSON
-tip export json > backup.json
+tip export --format=json > backup.json
 
 # Export as CSV (passwords only)
-tip export csv > passwords.csv
+tip export --format=csv > passwords.csv
 
 # Import data from backup
-tip import backup.json
+tip import --file=backup.json
 ```
 
 ### Remote Synchronization
@@ -250,13 +249,13 @@ tip auth logout
 tip config show
 
 # Set storage backend to SQLite
-tip config set storage sqlite
+tip config set --key=storage --value=sqlite
 
 # Change operation mode to remote
-tip config set mode remote
+tip config set --key=mode --value=remote
 
 # Set server address for remote mode
-tip config set server https://tip.example.com
+tip config set --key=server --value=https://tip.example.com
 
 # Reset to defaults
 tip config reset
@@ -265,19 +264,19 @@ tip config reset
 ### Token Management (Remote Mode)
 ```bash
 # Generate CLI token for automation
-tip auth token create --name "backup-script" --expires 90d
+tip auth token create --name="backup-script" --expires=90d
 
 # List active tokens
 tip auth token list
 
 # Get token details
-tip auth token info <id>
+tip auth token info --id=<id>
 
 # Extend token expiry
-tip auth token refresh <id> --expires 90d
+tip auth token refresh --id=<id> --expires=90d
 
 # Revoke token
-tip auth token revoke <id>
+tip auth token revoke --id=<id>
 ```
 
 ### Category Management
@@ -286,11 +285,11 @@ tip auth token revoke <id>
 tip password category list
 
 # Add custom category
-tip password category add freelance
+tip password category add --name=freelance
 
 # Create categories for organization
-tip password category add health
-tip password category add legal
+tip password category add --name=health
+tip password category add --name=legal
 ```
 
 ## Configuration File
@@ -330,42 +329,42 @@ output:
 - Use `tip lock` to secure vault after operations
 - Master password is never stored; derived key is used for encryption
 - CLI tokens in remote mode have configurable expiration
-- Always use `--mode remote` over untrusted networks
+- Always use `--mode=remote` over untrusted networks
 - Vault backups are encrypted with the same master password
-- Use `tip config set auto_lock_timeout 5` for auto-lock after 5 minutes
+- Use `tip config set --key=auto_lock_timeout --value=5` for auto-lock after 5 minutes
 
 ## Flags and Options
 
 ### Common Flags for All Commands
-```
---config <path>     # Use alternate configuration file
---vault <name>      # Specify vault (overrides config)
+```bash
+--config=<path>     # Use alternate configuration file
+--vault=<name>      # Specify vault (overrides config)
 --verbose           # Enable verbose output
 --quiet             # Suppress non-essential output
 --help              # Show command help
 ```
 
 ### Password Command Flags
-```
---category <name>   # Filter or assign category
---tags <tag1,tag2>  # Add tags to password
---url <url>         # Associated URL/website
---username <name>   # Username for login
---notes <text>      # Additional notes
+```bash
+--category=<name>   # Filter or assign category
+--tags=<tag1,tag2>  # Add tags to password
+--url=<url>         # Associated URL/website
+--username=<name>   # Username for login
+--notes=<text>      # Additional notes
 ```
 
 ### Task Command Flags
-```
---status <status>   # Filter by status (pending, in_progress, completed)
---priority <level>  # Filter by priority (low, medium, high, critical)
---due <date>        # Set/filter by due date
---assigned <user>   # Filter by assignee (remote mode)
---category <name>   # Filter or assign category
+```bash
+--status=<status>   # Filter by status (pending, in_progress, completed)
+--priority=<level>  # Filter by priority (low, medium, high, critical)
+--due=<date>        # Set/filter by due date
+--assigned=<user>   # Filter by assignee (remote mode)
+--category=<name>   # Filter or assign category
 ```
 
 ### Generation Flags
-```
---length <n>        # Password length (default: 16)
+```bash
+--length=<n>        # Password length (default: 16)
 --special           # Include special characters
 --no-numbers        # Exclude numbers
 --no-symbols        # Exclude symbols
@@ -376,10 +375,10 @@ output:
 
 Common error messages and solutions:
 
-```
+```bash
 "Vault not found"
 → Use `tip vault list` to see available vaults
-→ Use `tip vault switch <name>` to switch vaults
+→ Use `tip vault switch --name=<name>` to switch vaults
 
 "Item not found"
 → Use `tip password list` or `tip task list` to find IDs
@@ -391,5 +390,5 @@ Common error messages and solutions:
 
 "Storage locked"
 → Use `tip unlock` and enter your master password
-→ Configure auto-lock timeout with `tip config set auto_lock_timeout`
+→ Configure auto-lock timeout with `tip config set --key=auto_lock_timeout --value=<minutes>`
 ```

@@ -1,6 +1,6 @@
 # Tip
 
-A self-hosted password and task manager combining secure credential storage with intelligent task management. Built with Go, featuring end-to-end encryption, multi-device sync, and team collaboration.
+A self-hosted password and task manager combining secure credential storage with intelligent task management. Built with Zig, featuring end-to-end encryption, multi-device sync, and team collaboration.
 
 ## Features
 
@@ -41,13 +41,13 @@ A self-hosted password and task manager combining secure credential storage with
 tip config init
 
 # Create your first vault
-tip vault init personal
+tip vault init --name=personal
 
 # Add passwords
-tip password add github --username myuser
+tip password add --name=github --username=myuser
 
 # Add tasks
-tip task add "Review code" --priority high
+tip task add --description="Review code" --priority=high
 
 # List and manage
 tip password list
@@ -56,14 +56,11 @@ tip task list
 
 ## Documentation
 
-- **[Task Tracking](TASKS.md)** - Development tasks with completion status
 - **[Roadmap](docs/ROADMAP.md)** - Development timeline and milestones
 - **[CLI Reference](docs/CLI_REFERENCE.md)** - Complete command reference with examples
-- **[Password Features](docs/PASSWORD_FEATURES.md)** - Detailed password management guide
-- **[Task Features](docs/TASK_FEATURES.md)** - Comprehensive task management features
+- **[Features](docs/FEATURES.md)** - Complete password and task management features
 - **[Server API](docs/SERVER_API.md)** - REST API endpoints and examples
 - **[Architecture](docs/ARCHITECTURE.md)** - System design and technical details
-- **[Project Overview](docs/PROJECT_OVERVIEW.md)** - Vision and design principles
 
 ## Installation
 
@@ -71,7 +68,7 @@ tip task list
 ```bash
 git clone https://github.com/atisans/tip
 cd tip
-go build -o tip ./cmd/tip
+zig build
 ```
 
 ### Docker
@@ -97,29 +94,25 @@ security:
 ## Development
 
 ### Prerequisites
-- Go 1.24+
-- Make or Mage
+- Zig 0.13+
 - Docker (optional)
 
 ### Running Tests
 ```bash
 # Run all tests
-go test ./...
-
-# Run with coverage
-go test -cover ./...
+zig build test
 
 # Run task manager tests
-go test ./... -run Task
+zig test src/task.zig
 ```
 
 ### Build
 ```bash
 # Build CLI
-go build -o tip ./cmd/tip
+zig build
 
-# Build Server
-go build -o tip-server ./cmd/server
+# Run the CLI
+zig build run
 
 # Docker build
 docker build -t tip:latest .
@@ -162,10 +155,10 @@ Tip is designed for self-hosted deployment:
 docker-compose up -d
 
 # Manual deployment
-tip-server --config config.yaml
+tip-server --config=config.yaml
 
 # Enable TLS
-tip-server --config config.yaml --tls-cert cert.pem --tls-key key.pem
+tip-server --config=config.yaml --tls-cert=cert.pem --tls-key=key.pem
 ```
 
 ## License
