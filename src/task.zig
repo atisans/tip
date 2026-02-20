@@ -8,7 +8,40 @@ const Item = struct {
     completed_at: ?i64,
 };
 
-pub const Task = struct {
+pub const TaskArgs = struct {
+    add: ?[]const u8 = null,
+    list: bool = false,
+};
+
+pub fn execute_commands(T: TaskArgs) void {
+    var ta = Task.init(std.heap.smp_allocator);
+    defer ta.deinit();
+
+    const json_storage = "./tasks.json";
+
+    if (T.add) |value| {
+        // _ = try ta.load(json_storage); // TODO: load the json format instead.
+        ta.add(value) catch {
+            std.debug.print("Failed to add task\n", .{});
+            return;
+        };
+        ta.save_to_file(json_storage) catch {
+            std.debug.print("Failed to save tasks.json\n", .{});
+            return;
+        };
+        std.debug.print("Adding task: {s}\n", .{value});
+    } else if (T.list) {
+        const contents = ta.load(json_storage) catch {
+            std.debug.print("Failed to load tasks.json\n", .{});
+            return;
+        };
+
+        std.debug.print("Listing tasks\n", .{});
+        std.debug.print("tasks contents: {s}\n", .{contents});
+    }
+}
+
+const Task = struct {
     allocator: std.mem.Allocator,
     list: std.ArrayList(Item),
 
