@@ -30,3 +30,8 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+auto_test_runner.zig
+.zig-cache
+zig-out
+zig-pkg
