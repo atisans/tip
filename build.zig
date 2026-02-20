@@ -12,6 +12,10 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
         }),
     });
+
+    const flags = b.dependency("flags", .{});
+    exe.root_module.addImport("flags", flags.module("flags"));
+
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);
