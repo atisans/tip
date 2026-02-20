@@ -1,109 +1,43 @@
 # Tip
 
-A self-hosted password and task manager combining secure credential storage with intelligent task management. Built with Zig, featuring end-to-end encryption, multi-device sync, and team collaboration.
+A task manager built with Zig.
 
-## Features
-
-**Password Management**
-- AES-256-GCM encryption with Argon2id key derivation
-- Secure password generation and strength evaluation
-- Organization via categories, tags, and custom fields
-- Clipboard integration with auto-clear
-- Password history and version management
-- Secure password sharing (remote mode)
-- Full-text search and duplicate detection
-
-**Task Management**
-- Complete task lifecycle with priority and due dates
-- Categories and tags for organization
-- Task assignment and collaboration
-- Status tracking and filtering
-- Due date reminders and calendar integration
-- Link tasks to passwords and resources
-
-**Operational Modes**
-- Local Mode - Offline-first with JSON or SQLite storage
-- Remote Mode - Server-based with end-to-end encryption
-- Sync - Automatic conflict resolution and backup
-
-**Security**
-- Master password with no plaintext storage
-- End-to-end encryption on all data
-- Auto-lock with configurable timeout
-- Complete audit trails
-- Breach detection integration
-- Zero-knowledge architecture (remote mode)
 
 ## Quick Start
 
 ```bash
-# Initialize configuration
-tip config init
+# Add a task
+tip task add --name=github --desc="Review code"
 
-# Create your first vault
-tip vault init --name=personal
+# List tasks
+tip task --list
 
-# Add passwords
-tip password add --name=github --username=myuser
-
-# Add tasks
-tip task add --description="Review code" --priority=high
-
-# List and manage
-tip password list
-tip task list
+# Run tests
+zig build test --summary all
 ```
 
 ## Documentation
 
 - **[Roadmap](docs/ROADMAP.md)** - Development timeline and milestones
-- **[CLI Reference](docs/CLI_REFERENCE.md)** - Complete command reference with examples
-- **[Features](docs/FEATURES.md)** - Complete password and task management features
-- **[Server API](docs/SERVER_API.md)** - REST API endpoints and examples
 - **[Architecture](docs/ARCHITECTURE.md)** - System design and technical details
 
 ## Installation
 
-### From Source
 ```bash
 git clone https://github.com/atisans/tip
 cd tip
 zig build
 ```
 
-### Docker
-```bash
-docker-compose up -d tip-server
-```
-
-## Configuration
-
-Configuration stored in `~/.config/tip/config.yml`:
-
-```yaml
-mode: local              # local or remote
-storage: json            # json or sqlite
-vault: personal          # default vault
-server:
-  url: https://tip.example.com
-security:
-  auto_lock_timeout: 15  # minutes
-  password_history: 5
-```
-
 ## Development
 
 ### Prerequisites
-- Zig 0.13+
-- Docker (optional)
+- Zig 0.15+
 
 ### Running Tests
 ```bash
 # Run all tests
-zig build test
-
-# Run task manager tests
-zig test src/task.zig
+zig build test --summary all
 ```
 
 ### Build
@@ -113,9 +47,6 @@ zig build
 
 # Run the CLI
 zig build run
-
-# Docker build
-docker build -t tip:latest .
 ```
 
 ## Use Cases
@@ -123,7 +54,6 @@ docker build -t tip:latest .
 **Individual Users**
 - Secure personal password vault
 - Task and todo list management
-- Cross-device password sync
 - Offline-first operation
 
 **Teams**
@@ -150,17 +80,6 @@ docker build -t tip:latest .
 
 Tip is designed for self-hosted deployment:
 
-```bash
-# Using Docker Compose
-docker-compose up -d
-
-# Manual deployment
-tip-server --config=config.yaml
-
-# Enable TLS
-tip-server --config=config.yaml --tls-cert=cert.pem --tls-key=key.pem
-```
-
 ## License
 
 MIT License - See [LICENSE](LICENSE)
@@ -173,4 +92,3 @@ Contributions welcome! Please see the development roadmap in [docs/ROADMAP.md](d
 
 - Documentation: [docs/](docs/)
 - Issues: GitHub Issues
-- Security: See [SECURITY.md](SECURITY.md) for responsible disclosure

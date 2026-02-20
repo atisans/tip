@@ -41,6 +41,9 @@ Future browser-based interface offering:
   - [x] JSON persistence with timestamps
   - [x] Comprehensive test suite (embedded in src/task.zig)
   - [x] Memory-efficient data structures (ArrayList)
+- [x] **Build System** (`build.zig`)
+  - [x] Auto-generated test runner using `addWriteFiles()` (lives in build cache, no disk artifacts)
+  - [x] Iterative file collection across `src/` for test discovery
 
 ### Pending Components
 - [ ] **Password Manager Core** - Encryption, CRUD, generation
@@ -93,7 +96,7 @@ Future browser-based interface offering:
 
 ### Performance
 - **Optimized Storage**: Efficient data structures and indexing
-- **Caching**: Redis for frequently accessed data
+- **Caching**: In-memory caching for frequently accessed data
 - **Lazy Loading**: On-demand data retrieval
 - **Compression**: Reduced storage and bandwidth usage
 
@@ -102,12 +105,6 @@ Future browser-based interface offering:
 - **Backup/Restore**: Complete data export/import
 - **Migration Tools**: Seamless upgrades and data migration
 - **Health Monitoring**: Built-in diagnostics and metrics
-
-### Compliance
-- **Data Privacy**: GDPR-compliant data handling
-- **Security Standards**: Industry best practices
-- **Audit Trails**: Complete operation logging
-- **Access Controls**: Granular permission management
 
 ## Feature Matrix
 
@@ -245,8 +242,8 @@ Future browser-based interface offering:
 - Detailed architecture sections:
   - Business logic layer (models, managers, crypto)
   - Storage abstraction (interfaces and implementations)
-  - CLI architecture (Cobra framework)
-  - Server architecture (Chi router)
+  - CLI architecture (flags.zig framework)
+  - Server architecture (std.http)
   - API design and endpoints
   - Authentication and authorization
 - Technology stack for CLI, Server, Database, Security, Development
@@ -305,7 +302,7 @@ Future browser-based interface offering:
   - Deployment & Operations
 - Phase 11: Web Platform Development
 - Advanced Features & Future Development
-- Success metrics (technical and user)
+
 - Implementation notes
 
 **Read this if**: You want to understand the development plan and status

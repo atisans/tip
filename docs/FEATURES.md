@@ -959,7 +959,6 @@ tip import --file=backup.json
 - [ ] Credit card secure storage
 - [ ] Identity document storage
 - [ ] Integration with identity providers
-- [ ] Machine learning-based security alerts
 
 ## Task Manager Features
 
@@ -1468,14 +1467,12 @@ tip t search --query="bug"
 The Task Manager includes comprehensive tests:
 
 ```bash
-# Run task tests
-go test ./... -run Task
+# Run all tests
+zig build test
 
 # With verbose output
-go test ./... -run Task -v
+zig build test --summary all
 
-# With coverage
-go test ./... -run Task -cover
 ```
 
 ### Future Enhancements
@@ -1488,5 +1485,4 @@ go test ./... -run Task -cover
 - [ ] Slack/Teams notifications
 - [ ] Email reminders
 - [ ] Mobile app support
-- [ ] AI-powered prioritization
 - [ ] Task templates library

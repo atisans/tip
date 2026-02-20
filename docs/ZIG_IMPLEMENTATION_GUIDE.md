@@ -2314,33 +2314,23 @@ pub fn build(b: *std.Build) void {
     b.step("run", "Run the CLI").dependOn(&run_cli.step);
     b.step("server", "Run the server").dependOn(&run_server.step);
     
-    // Tests
-    const core_tests = b.addTest(.{
-        .root_source_file = b.path("src/core/types.zig"),
-        .target = target,
-        .optimize = optimize,
+    // Tests — auto-generated test runner lives in the build cache
+    // collect_files() walks src/ iteratively, generate_test_runner()
+    // uses addWriteFiles() + addCopyDirectory() so no file is written
+    // to the source tree and no cleanup step is needed.
+    const auto_test_file = generate_test_runner(b, "src") catch |err| {
+        std.log.err("Failed to generate test runner: {}", .{err});
+        return;
+    };
+
+    const all_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = auto_test_file,
+            .target = target,
+            .optimize = optimize,
+        }),
     });
-    
-    const crypto_tests = b.addTest(.{
-        .root_source_file = b.path("src/crypto/master.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    
-    const storage_tests = b.addTest(.{
-        .root_source_file = b.path("src/storage/json.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    
-    const run_core_tests = b.addRunArtifact(core_tests);
-    const run_crypto_tests = b.addRunArtifact(crypto_tests);
-    const run_storage_tests = b.addRunArtifact(storage_tests);
-    
-    const test_step = b.step("test", "Run all tests");
-    test_step.dependOn(&run_core_tests.step);
-    test_step.dependOn(&run_crypto_tests.step);
-    test_step.dependOn(&run_storage_tests.step);
+    b.step("test", "Run all tests").dependOn(&b.addRunArtifact(all_tests).step);
 }
 ```
 

@@ -85,15 +85,15 @@ tip/
 
 ## Current Implementation
 
-### Task Manager Core (`tip.go`)
-- `item` struct: Task with ID, task name, done status, timestamps
-- `List` type: Slice of items with methods
+### Task Manager Core (`src/task.zig`)
+- `Item` struct: Task with ID, task name, done status, timestamps
+- `Task` struct: ArrayList-based collection with methods
 - Methods:
-  - `Add(task string)` - Add new task
-  - `Complete(id int)` - Mark task as done
-  - `Delete(id int)` - Remove task
-  - `Save(filename string)` - Persist to JSON
-  - `Get(filename string)` - Load from JSON
+  - `add(task)` - Add new task
+  - `complete(id)` - Mark task as done
+  - `delete(task_id)` - Remove task
+  - `save_to_file(filepath)` - Persist to JSON
+  - `load(filepath)` - Load from JSON
 
 ### Storage
 - JSON file format
@@ -739,13 +739,14 @@ GET    /sync/last-modified/:vaultId # Get last modified timestamp
 ## Technology Stack
 
 ### CLI Application
-- **Language**: Go 1.24+
-- **CLI Framework**: Cobra (command parsing)
-- **Configuration**: Viper (config management)
-- **HTTP Client**: net/http with custom retry logic
+- **Language**: Zig 0.15+
+- **CLI Framework**: flags.zig (command parsing)
+- **Configuration**: N/A (config management)
+- **Serialization**: std.json (built-in)
+- **HTTP Client**: std.http.Client with custom retry logic
 - **Terminal**: termios for secure input
 - **Crypto**: golang.org/x/crypto (argon2, aes)
-- **Testing**: Testify for assertions
+- **Testing**: std.testing (built-in)
 
 ### Web Server
 - **Language**: Go 1.24+
@@ -764,10 +765,10 @@ GET    /sync/last-modified/:vaultId # Get last modified timestamp
 - **Connection Pooling**: database/sql stdlib
 - **Query Builder**: squirrel (optional)
 
-### Security
-- **Encryption**: AES-256-GCM (crypto/aes)
-- **Key Derivation**: Argon2id (golang.org/x/crypto/argon2)
-- **Random**: crypto/rand
+### Security (Planned)
+- **Encryption**: AES-256-GCM (std.crypto)
+- **Key Derivation**: Argon2id (std.crypto)
+- **Random**: std.crypto.random
 - **TLS**: Let's Encrypt with cert-manager
 
 ### Development Tools
@@ -790,29 +791,24 @@ GET    /sync/last-modified/:vaultId # Get last modified timestamp
 
 ### Local Development
 ```
-Docker Compose
-├── tip-cli (build)
-├── tip-server (build)
-├── SQLite (volume)
-└── Redis (optional)
+zig build       # Build CLI binary
+zig build test  # Run all tests
+zig build run   # Run the CLI
 ```
 
 ### Production Deployment
 ```
-Kubernetes / Docker Swarm
-├── tip-server (replicated)
-├── SQLite (persistent volume)
-├── Redis (cluster)
-├── Nginx (reverse proxy)
-└── Let's Encrypt (TLS)
+Cross-compiled binaries (via CI/CD)
+├── tip-linux-x86_64
+├── tip-linux-arm64
+├── tip-macos-x86_64
+├── tip-macos-arm64
+└── tip-windows-x86_64.exe
 ```
 
-### Monitoring & Observability
-- **Health Checks**: /health, /ready endpoints
-- **Metrics**: Prometheus metrics endpoint
-- **Logging**: Structured JSON logs
-- **Tracing**: OpenTelemetry (optional)
-- **Alerting**: Prometheus AlertManager
+### CI/CD
+- **Prerelease**: GitHub Actions on main push (build + test + cross-compile)
+- **Release**: GitHub Actions on version tags
 
 ## Design Decisions Made
 
