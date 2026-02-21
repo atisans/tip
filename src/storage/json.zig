@@ -13,8 +13,10 @@ fn get_storage(config: enum { vault, password, tasks }) void {
 /// is freed at once when the arena is torn down.
 pub fn load_tasks(arena: std.mem.Allocator) ![]models.Task {
     const file = std.fs.cwd().openFile(default_storage, .{ .mode = .read_only }) catch |err| {
-        if (err == error.FileNotFound) return &[_]models.Task{};
-        return err;
+        return switch (err) {
+            error.FileNotFound => &[_]models.Task{},
+            else => err,
+        };
     };
     defer file.close();
 
@@ -22,7 +24,6 @@ pub fn load_tasks(arena: std.mem.Allocator) ![]models.Task {
     if (stat.size == 0) return &[_]models.Task{};
 
     const contents = try arena.alloc(u8, stat.size);
-
     _ = try file.read(contents);
 
     const parsed = try std.json.parseFromSliceLeaky(struct { tasks: []models.Task }, arena, contents, .{});
