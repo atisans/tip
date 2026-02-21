@@ -1,6 +1,6 @@
 const std = @import("std");
 const flags = @import("flags");
-const task = @import("task.zig");
+const task = @import("core/task.zig");
 
 pub fn main() !void {
     var gpa: std.heap.DebugAllocator(.{}) = .init;
