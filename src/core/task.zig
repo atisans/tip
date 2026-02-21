@@ -7,6 +7,7 @@ pub const TaskArgs = struct {
     list: bool = false,
 };
 
+/// Dispatches the appropriate task operation based on the parsed CLI arguments.
 pub fn execute_commands(T: TaskArgs) void {
     var gpa: std.heap.DebugAllocator(.{}) = .init;
     defer _ = gpa.deinit();
@@ -22,11 +23,12 @@ pub fn execute_commands(T: TaskArgs) void {
     }
 }
 
+/// Creates a new task with the given title and persists it to storage.
 fn add_task(allocator: std.mem.Allocator, title: []const u8) !void {
-    const existing = storage.load_tasks(allocator) catch &[_]models.Task{};
-    if (existing.len > 0) {
-        defer allocator.free(existing);
-    }
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+
+    const existing = storage.load_tasks(arena.allocator()) catch &[_]models.Task{};
 
     std.debug.print("Adding task: {s}\n", .{title});
 
@@ -37,12 +39,14 @@ fn add_task(allocator: std.mem.Allocator, title: []const u8) !void {
         .created_at = std.time.timestamp(),
     };
 
-    try storage.save_tasks(allocator, &[_]models.Task{new_task});
+    try storage.save_tasks(arena.allocator(), &[_]models.Task{new_task});
+    _ = existing;
 }
 
+/// Loads and prints all tasks from storage.
 fn list_task(allocator: std.mem.Allocator) !void {
     var arena = std.heap.ArenaAllocator.init(allocator);
-    defer arena.deinit(); // frees everything at once
+    defer arena.deinit();
 
     const tasks = storage.load_tasks(arena.allocator()) catch |err| {
         switch (err) {
@@ -53,12 +57,15 @@ fn list_task(allocator: std.mem.Allocator) !void {
             else => return,
         }
     };
+    std.debug.print("Len: {d}\n", .{tasks.len});
 
     for (tasks) |task| {
         std.debug.print("{s}: {s}\n", .{ task.id, task.title });
     }
 }
 
+/// Marks the task matching `task_id` as completed. Returns `error.InvalidItem`
+/// if no task with that id exists.
 fn mark_complete(allocator: std.mem.Allocator, task_id: []const u8) !void {
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit(); // frees everything at once
@@ -80,6 +87,8 @@ fn mark_complete(allocator: std.mem.Allocator, task_id: []const u8) !void {
     return error.InvalidItem;
 }
 
+/// Removes the task matching `task_id` from storage. Returns `error.InvalidItem`
+/// if no task with that id exists.
 fn delete_task(allocator: std.mem.Allocator, task_id: []const u8) !void {
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
