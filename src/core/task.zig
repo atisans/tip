@@ -30,17 +30,21 @@ fn add_task(allocator: std.mem.Allocator, title: []const u8) !void {
 
     const existing = storage.load_tasks(arena.allocator()) catch &[_]models.Task{};
 
-    std.debug.print("Adding task: {s}\n", .{title});
+    var tasks: std.ArrayList(models.Task) = .empty;
+    defer tasks.deinit(allocator);
+    for (existing) |task| {
+        tasks.append(allocator, task) catch continue;
+    }
 
-    const new_task: models.Task = .{
+    try tasks.append(allocator, .{
         .status = .pending,
         .id = "1",
-        .title = title,
+        .title = title[0..],
         .created_at = std.time.timestamp(),
-    };
+    });
+    std.debug.print("Adding task: {s}\n", .{title});
 
-    try storage.save_tasks(arena.allocator(), &[_]models.Task{new_task});
-    _ = existing;
+    try storage.save_tasks(arena.allocator(), tasks.items);
 }
 
 /// Loads and prints all tasks from storage.
