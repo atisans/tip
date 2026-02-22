@@ -1,4 +1,5 @@
 const std = @import("std");
+const version = @import("version").version;
 const flags = @import("flags");
 const task = @import("core/task.zig");
 
@@ -17,6 +18,7 @@ pub fn main() !void {
 
     const Args = union(enum) {
         task: task.TaskArgs,
+        version: struct {},
     };
     const parsed = flags.parse(args, Args) catch |err| {
         return switch (err) {
@@ -30,5 +32,6 @@ pub fn main() !void {
 
     switch (parsed) {
         .task => |t| task.execute_commands(t),
+        .version => std.debug.print("tip {s}", .{version}),
     }
 }
