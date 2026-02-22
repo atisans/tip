@@ -10,10 +10,23 @@ pub fn main() !void {
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
 
+    if (args.len < 2) {
+        std.debug.print("Usage: tip <global-flags> <command> <subcommand> [args] [flags]\n", .{});
+        return;
+    }
+
     const Args = union(enum) {
         task: task.TaskArgs,
     };
-    const parsed = try flags.parse(args, Args);
+    const parsed = flags.parse(args, Args) catch |err| {
+        return switch (err) {
+            error.UnknownSubcommand => {
+                std.debug.print("Usage: tip <global-flags> <command> <subcommand> [args] [flags]\n", .{});
+                std.debug.print("Run 'tip --help' for more information.\n", .{});
+            },
+            else => {},
+        };
+    };
 
     switch (parsed) {
         .task => |t| task.execute_commands(t),
