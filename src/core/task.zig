@@ -62,10 +62,14 @@ fn list_task(allocator: std.mem.Allocator) !void {
             else => return,
         }
     };
-    std.debug.print("Len: {d}\n", .{tasks.len});
+    std.debug.print("({d}) Tasks:\n", .{tasks.len});
 
     for (tasks) |task| {
-        std.debug.print("{s}: {s}\n", .{ task.id, task.title });
+        if (task.status == .completed) {
+            std.debug.print("    [x]: {s}\n", .{task.title});
+        } else {
+            std.debug.print("    [ ]: {s}\n", .{task.title});
+        }
     }
 }
 
