@@ -13,6 +13,7 @@ pub fn main() !void {
 
     if (args.len < 2) {
         std.debug.print("Usage: tip <global-flags> <command> <subcommand> [args] [flags]\n", .{});
+        std.debug.print("Run 'tip --help' for more information.\n", .{});
         return;
     }
 
@@ -26,7 +27,16 @@ pub fn main() !void {
                 std.debug.print("Usage: tip <global-flags> <command> <subcommand> [args] [flags]\n", .{});
                 std.debug.print("Run 'tip --help' for more information.\n", .{});
             },
-            else => {},
+            error.MissingSubcommand => {
+                std.debug.print("Usage: tip task <subcommand>\n", .{});
+                std.debug.print("Subcommands: add, list\n", .{});
+                std.debug.print("Run 'tip --help' for more information.\n", .{});
+            },
+            error.MissingRequiredFlag => {
+                std.debug.print("Error: missing required flag\n", .{});
+                std.debug.print("Run 'tip --help' for more information.\n", .{});
+            },
+            else => std.debug.print("{any}", .{err}),
         };
     };
 
