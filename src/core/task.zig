@@ -2,9 +2,11 @@ const std = @import("std");
 const models = @import("models.zig");
 const storage = @import("../storage/json.zig");
 
-pub const TaskArgs = struct {
-    add: ?[]const u8 = null,
-    list: bool = false,
+pub const TaskArgs = union(enum) {
+    add: struct {
+        name: []const u8,
+    },
+    list: struct {},
 };
 
 /// Dispatches the appropriate task operation based on the parsed CLI arguments.
@@ -13,13 +15,12 @@ pub fn execute_commands(T: TaskArgs) void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    if (T.add) |value| {
-        add_task(allocator, value) catch {
+    switch (T) {
+        .add => |add| add_task(allocator, add.name) catch {
             std.debug.print("Failed to add task\n", .{});
             return;
-        };
-    } else if (T.list) {
-        list_task(allocator) catch {};
+        },
+        .list => list_task(allocator) catch {},
     }
 }
 
