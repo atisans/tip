@@ -5,16 +5,15 @@
     .minimum_zig_version = "0.15.2",
     .dependencies = .{
         .flags = .{
-            .url = "git+https://github.com/atisans/flags.zig#b5dc13d7c5bb1b740c11dabb964ce133332eb267",
-            .hash = "flags-0.0.3-GjWK4ktPAADuwmoqV4alTonOZgg_i-4nI5Cdi3C8L9yu",
+            .url = "git+https://github.com/atisans/flags.zig.git#ba3ae7d2434cc6f381356e8028b51b60ab5942d1",
+            .hash = "flags-0.1.0-GjWK4iW1AAC8grTvxWnjU2VjsWp6uG5VJN2L3nqdIO_K",
         },
     },
     .paths = .{
         "build.zig",
         "build.zig.zon",
         "src",
-        // For example...
-        //"LICENSE",
-        //"README.md",
+        "LICENSE",
+        "README.md",
     },
 }
