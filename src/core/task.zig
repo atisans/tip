@@ -125,6 +125,7 @@ fn mark_complete(allocator: std.mem.Allocator, task_id: []const u8, dir: std.fs.
             task.status = .completed;
             task.updated_at = std.time.timestamp();
             task.completed_at = std.time.timestamp();
+            try storage.save_tasks(arena.allocator(), dir, tasks);
             return;
         }
     }
@@ -210,8 +211,6 @@ test "delete nonexistent task returns error" {
     var tmp_dir = std.testing.tmpDir(.{});
     defer tmp_dir.cleanup();
 
-    try add_task(allocator, "Some Task", tmp_dir.dir);
-
     try std.testing.expectError(error.InvalidItem, delete_task(allocator, "999", tmp_dir.dir));
 }
 
@@ -223,4 +222,34 @@ test "list task with no file" {
 
     // Should not error — just prints "No tasks"
     try list_task(allocator, tmp_dir.dir);
+}
+
+test "mark_complete sets status and timestamps" {
+    const allocator = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+
+    var tmp_dir = std.testing.tmpDir(.{});
+    defer tmp_dir.cleanup();
+
+    try add_task(allocator, "Complete Me", tmp_dir.dir);
+
+    const tasks = try storage.load_tasks(arena.allocator(), tmp_dir.dir);
+    try mark_complete(allocator, tasks[0].id, tmp_dir.dir);
+
+    const updated = try storage.load_tasks(arena.allocator(), tmp_dir.dir);
+    try std.testing.expectEqual(updated[0].status, .completed);
+    try std.testing.expect(updated[0].updated_at != null);
+    try std.testing.expect(updated[0].completed_at != null);
+}
+
+test "mark_complete nonexistent task returns error" {
+    const allocator = std.testing.allocator;
+
+    var tmp_dir = std.testing.tmpDir(.{});
+    defer tmp_dir.cleanup();
+
+    try add_task(allocator, "Some Task", tmp_dir.dir);
+
+    try std.testing.expectError(error.InvalidItem, mark_complete(allocator, "nonexistent-id", tmp_dir.dir));
 }
