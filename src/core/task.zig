@@ -1,6 +1,7 @@
 const std = @import("std");
 const models = @import("models.zig");
 const storage = @import("../storage/json.zig");
+const generate = @import("../utils/generate.zig");
 
 pub const TaskArgs = struct {
     list: bool = false,
@@ -80,6 +81,9 @@ fn add_task(allocator: std.mem.Allocator, title: []const u8) !void {
 fn list_task(allocator: std.mem.Allocator) !void {
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
+
+    const id = try generate.uuid(allocator);
+    defer allocator.free(id);
 
     const tasks = storage.load_tasks(arena.allocator()) catch |err| {
         switch (err) {
