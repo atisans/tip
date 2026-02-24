@@ -66,9 +66,11 @@ fn add_task(allocator: std.mem.Allocator, title: []const u8) !void {
         tasks.append(allocator, task) catch continue;
     }
 
+    const id = try generate.uuid(allocator);
+    defer allocator.free(id);
     try tasks.append(allocator, .{
         .status = .pending,
-        .id = "1",
+        .id = id[0..],
         .title = title[0..],
         .created_at = std.time.timestamp(),
     });
@@ -81,9 +83,6 @@ fn add_task(allocator: std.mem.Allocator, title: []const u8) !void {
 fn list_task(allocator: std.mem.Allocator) !void {
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
-
-    const id = try generate.uuid(allocator);
-    defer allocator.free(id);
 
     const tasks = storage.load_tasks(arena.allocator()) catch |err| {
         switch (err) {
@@ -172,7 +171,7 @@ test "add and list tasks" {
     defer arena.deinit();
 
     const tasks = try storage.load_tasks(arena.allocator());
-    try std.testing.expect(tasks.len == 1);
+    try std.testing.expectEqual(tasks.len, 1);
     try std.testing.expectEqualStrings(tasks[0].title, "Test Task");
 }
 
@@ -193,7 +192,7 @@ test "delete task" {
         var arena = std.heap.ArenaAllocator.init(allocator);
         defer arena.deinit();
         const tasks = try storage.load_tasks(arena.allocator());
-        try std.testing.expect(tasks.len == 1);
+        try std.testing.expectEqual(tasks.len, 1);
     }
 
     try delete_task(allocator, "1");
@@ -203,7 +202,7 @@ test "delete task" {
         var arena = std.heap.ArenaAllocator.init(allocator);
         defer arena.deinit();
         const tasks = try storage.load_tasks(arena.allocator());
-        try std.testing.expect(tasks.len == 0);
+        try std.testing.expectEqual(tasks.len, 0);
     }
 }
 
