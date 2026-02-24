@@ -176,6 +176,9 @@ test "add and list tasks" {
     const tasks = try storage.load_tasks(arena.allocator(), tmp_dir.dir);
     try std.testing.expectEqual(tasks.len, 1);
     try std.testing.expectEqualStrings(tasks[0].title, "Test Task");
+    try std.testing.expectEqual(tasks[0].status, .pending);
+    try std.testing.expect(tasks[0].id.len > 0);
+    try std.testing.expect(tasks[0].created_at > 0);
 }
 
 test "delete task" {
