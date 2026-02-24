@@ -36,14 +36,20 @@ pub fn execute_commands(T: TaskArgs) void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
+    var dir = storage.open_config_dir(allocator) catch {
+        std.debug.print("Failed to open config directory\n", .{});
+        return;
+    };
+    defer dir.close();
+
     if (T.list) {
-        list_task(allocator) catch {};
+        list_task(allocator, dir) catch {};
         return;
     }
 
     if (T.subcommand) |subcommand| {
         switch (subcommand) {
-            .add => |add| add_task(allocator, add.name) catch {
+            .add => |add| add_task(allocator, add.name, dir) catch {
                 std.debug.print("Failed to add task\n", .{});
                 return;
             },
@@ -54,11 +60,11 @@ pub fn execute_commands(T: TaskArgs) void {
 }
 
 /// Creates a new task with the given title and persists it to storage.
-fn add_task(allocator: std.mem.Allocator, title: []const u8) !void {
+fn add_task(allocator: std.mem.Allocator, title: []const u8, dir: std.fs.Dir) !void {
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
 
-    const existing = storage.load_tasks(arena.allocator()) catch &[_]models.Task{};
+    const existing = storage.load_tasks(arena.allocator(), dir) catch &[_]models.Task{};
 
     var tasks: std.ArrayList(models.Task) = .empty;
     defer tasks.deinit(allocator);
@@ -76,15 +82,15 @@ fn add_task(allocator: std.mem.Allocator, title: []const u8) !void {
     });
     std.debug.print("Adding task: {s}\n", .{title});
 
-    try storage.save_tasks(arena.allocator(), tasks.items);
+    try storage.save_tasks(arena.allocator(), dir, tasks.items);
 }
 
 /// Loads and prints all tasks from storage.
-fn list_task(allocator: std.mem.Allocator) !void {
+fn list_task(allocator: std.mem.Allocator, dir: std.fs.Dir) !void {
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
 
-    const tasks = storage.load_tasks(arena.allocator()) catch |err| {
+    const tasks = storage.load_tasks(arena.allocator(), dir) catch |err| {
         switch (err) {
             error.FileNotFound => {
                 std.debug.print("No tasks\n", .{});
@@ -106,16 +112,16 @@ fn list_task(allocator: std.mem.Allocator) !void {
 
 /// Marks the task matching `task_id` as completed. Returns `error.InvalidItem`
 /// if no task with that id exists.
-fn mark_complete(allocator: std.mem.Allocator, task_id: []const u8) !void {
+fn mark_complete(allocator: std.mem.Allocator, task_id: []const u8, dir: std.fs.Dir) !void {
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit(); // frees everything at once
 
-    const tasks = storage.load_tasks(arena.allocator()) catch {
+    const tasks = storage.load_tasks(arena.allocator(), dir) catch {
         return;
     };
 
     for (tasks) |*task| {
-        if (task.id == task_id) {
+        if (std.mem.eql(u8, task.id, task_id)) {
             task.status = .completed;
             task.updated_at = std.time.timestamp();
             task.completed_at = std.time.timestamp();
@@ -129,13 +135,13 @@ fn mark_complete(allocator: std.mem.Allocator, task_id: []const u8) !void {
 
 /// Removes the task matching `task_id` from storage. Returns `error.InvalidItem`
 /// if no task with that id exists.
-fn delete_task(allocator: std.mem.Allocator, task_id: []const u8) !void {
+fn delete_task(allocator: std.mem.Allocator, task_id: []const u8, dir: std.fs.Dir) !void {
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
 
     const arena_alloc = arena.allocator();
 
-    const tasks = storage.load_tasks(arena_alloc) catch {
+    const tasks = storage.load_tasks(arena_alloc, dir) catch {
         return;
     };
 
@@ -152,25 +158,21 @@ fn delete_task(allocator: std.mem.Allocator, task_id: []const u8) !void {
 
     if (!found) return error.InvalidItem;
 
-    try storage.save_tasks(arena_alloc, remaining.items);
+    try storage.save_tasks(arena_alloc, dir, remaining.items);
 }
 
 test "add and list tasks" {
     const allocator = std.testing.allocator;
 
-    var orig_cwd = std.fs.cwd().openDir(".", .{}) catch return;
-    defer orig_cwd.close();
     var tmp_dir = std.testing.tmpDir(.{});
     defer tmp_dir.cleanup();
-    tmp_dir.dir.setAsCwd() catch return;
-    defer orig_cwd.setAsCwd() catch {};
 
-    try add_task(allocator, "Test Task");
+    try add_task(allocator, "Test Task", tmp_dir.dir);
 
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
 
-    const tasks = try storage.load_tasks(arena.allocator());
+    const tasks = try storage.load_tasks(arena.allocator(), tmp_dir.dir);
     try std.testing.expectEqual(tasks.len, 1);
     try std.testing.expectEqualStrings(tasks[0].title, "Test Task");
 }
@@ -178,30 +180,26 @@ test "add and list tasks" {
 test "delete task" {
     const allocator = std.testing.allocator;
 
-    var orig_cwd = std.fs.cwd().openDir(".", .{}) catch return;
-    defer orig_cwd.close();
     var tmp_dir = std.testing.tmpDir(.{});
     defer tmp_dir.cleanup();
-    tmp_dir.dir.setAsCwd() catch return;
-    defer orig_cwd.setAsCwd() catch {};
 
-    try add_task(allocator, "To Delete");
+    try add_task(allocator, "To Delete", tmp_dir.dir);
 
-    // Verify it exists
-    {
+    const task_id = blk: {
         var arena = std.heap.ArenaAllocator.init(allocator);
         defer arena.deinit();
-        const tasks = try storage.load_tasks(arena.allocator());
+        const tasks = try storage.load_tasks(arena.allocator(), tmp_dir.dir);
         try std.testing.expectEqual(tasks.len, 1);
-    }
+        break :blk try allocator.dupe(u8, tasks[0].id);
+    };
+    defer allocator.free(task_id);
 
-    try delete_task(allocator, "1");
+    try delete_task(allocator, task_id, tmp_dir.dir);
 
-    // Verify it's gone
     {
         var arena = std.heap.ArenaAllocator.init(allocator);
         defer arena.deinit();
-        const tasks = try storage.load_tasks(arena.allocator());
+        const tasks = try storage.load_tasks(arena.allocator(), tmp_dir.dir);
         try std.testing.expectEqual(tasks.len, 0);
     }
 }
@@ -209,28 +207,20 @@ test "delete task" {
 test "delete nonexistent task returns error" {
     const allocator = std.testing.allocator;
 
-    var orig_cwd = std.fs.cwd().openDir(".", .{}) catch return;
-    defer orig_cwd.close();
     var tmp_dir = std.testing.tmpDir(.{});
     defer tmp_dir.cleanup();
-    tmp_dir.dir.setAsCwd() catch return;
-    defer orig_cwd.setAsCwd() catch {};
 
-    try add_task(allocator, "Some Task");
+    try add_task(allocator, "Some Task", tmp_dir.dir);
 
-    try std.testing.expectError(error.InvalidItem, delete_task(allocator, "999"));
+    try std.testing.expectError(error.InvalidItem, delete_task(allocator, "999", tmp_dir.dir));
 }
 
 test "list task with no file" {
     const allocator = std.testing.allocator;
 
-    var orig_cwd = std.fs.cwd().openDir(".", .{}) catch return;
-    defer orig_cwd.close();
     var tmp_dir = std.testing.tmpDir(.{});
     defer tmp_dir.cleanup();
-    tmp_dir.dir.setAsCwd() catch return;
-    defer orig_cwd.setAsCwd() catch {};
 
     // Should not error — just prints "No tasks"
-    try list_task(allocator);
+    try list_task(allocator, tmp_dir.dir);
 }
