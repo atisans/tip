@@ -9,6 +9,24 @@ pub const TaskArgs = struct {
             name: []const u8,
         },
     } = null,
+
+    pub const help =
+        \\Task Management Commands
+        \\
+        \\Usage:
+        \\  tip task <subcommand> [args] [flags]
+        \\
+        \\Options:
+        \\  --list                        List all tasks
+        \\
+        \\Commands:
+        \\  add --name=<name>              Add new task
+        \\
+        \\Examples:
+        \\  tip task --list
+        \\  tip task add --name="Review code"
+        \\
+    ;
 };
 
 /// Dispatches the appropriate task operation based on the parsed CLI arguments.
@@ -30,7 +48,7 @@ pub fn execute_commands(T: TaskArgs) void {
             },
         }
     } else {
-        std.debug.print("No command provided\n", .{});
+        std.debug.print("{s}\n", .{TaskArgs.help});
     }
 }
 
