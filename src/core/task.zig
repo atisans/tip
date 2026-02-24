@@ -61,6 +61,8 @@ pub fn execute_commands(T: TaskArgs) void {
 
 /// Creates a new task with the given title and persists it to storage.
 fn add_task(allocator: std.mem.Allocator, title: []const u8, dir: std.fs.Dir) !void {
+    if (title.len == 0) return error.EmptyTitle;
+
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
 
@@ -255,4 +257,51 @@ test "mark_complete nonexistent task returns error" {
     try add_task(allocator, "Some Task", tmp_dir.dir);
 
     try std.testing.expectError(error.InvalidItem, mark_complete(allocator, "nonexistent-id", tmp_dir.dir));
+}
+
+test "add empty task name returns error" {
+    const allocator = std.testing.allocator;
+
+    var tmp_dir = std.testing.tmpDir(.{});
+    defer tmp_dir.cleanup();
+
+    try std.testing.expectError(error.EmptyTitle, add_task(allocator, "", tmp_dir.dir));
+}
+
+test "multiple tasks have unique ids" {
+    const allocator = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+
+    var tmp_dir = std.testing.tmpDir(.{});
+    defer tmp_dir.cleanup();
+
+    try add_task(allocator, "First", tmp_dir.dir);
+    try add_task(allocator, "Second", tmp_dir.dir);
+    try add_task(allocator, "Third", tmp_dir.dir);
+
+    const tasks = try storage.load_tasks(arena.allocator(), tmp_dir.dir);
+    try std.testing.expectEqual(tasks.len, 3);
+    try std.testing.expect(!std.mem.eql(u8, tasks[0].id, tasks[1].id));
+    try std.testing.expect(!std.mem.eql(u8, tasks[1].id, tasks[2].id));
+    try std.testing.expect(!std.mem.eql(u8, tasks[0].id, tasks[2].id));
+}
+
+test "list tasks with mixed statuses" {
+    const allocator = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+
+    var tmp_dir = std.testing.tmpDir(.{});
+    defer tmp_dir.cleanup();
+
+    try add_task(allocator, "Pending Task", tmp_dir.dir);
+    try add_task(allocator, "Done Task", tmp_dir.dir);
+
+    const tasks = try storage.load_tasks(arena.allocator(), tmp_dir.dir);
+    try mark_complete(allocator, tasks[1].id, tmp_dir.dir);
+
+    const updated = try storage.load_tasks(arena.allocator(), tmp_dir.dir);
+    try std.testing.expectEqual(updated[0].status, .pending);
+    try std.testing.expectEqual(updated[1].status, .completed);
 }
