@@ -3,6 +3,62 @@ const models = @import("models.zig");
 const storage = @import("../storage/json.zig");
 const generate = @import("../utils/generate.zig");
 
+const Color = enum {
+    red,
+    green,
+    yellow,
+    cyan,
+    reset,
+};
+
+fn color(c: Color) []const u8 {
+    return switch (c) {
+        .red => "\x1b[31m",
+        .green => "\x1b[32m",
+        .yellow => "\x1b[33m",
+        .cyan => "\x1b[36m",
+        .reset => "\x1b[0m",
+    };
+}
+
+fn priority_label(priority: ?models.Task.Priority) []const u8 {
+    if (priority) |p| {
+        return switch (p) {
+            .high => "↑",
+            .medium => "-",
+            .low => "↓",
+        };
+    }
+    return "";
+}
+
+fn priority_color(priority: ?models.Task.Priority) Color {
+    if (priority) |p| {
+        return switch (p) {
+            .high => .red,
+            .medium => .yellow,
+            .low => .green,
+        };
+    }
+    return .reset;
+}
+
+fn status_icon(status: models.Task.Status) []const u8 {
+    return switch (status) {
+        .pending => "○",
+        .in_progress => "⟳",
+        .completed => "✓",
+    };
+}
+
+fn status_color(status: models.Task.Status) Color {
+    return switch (status) {
+        .pending => .reset,
+        .in_progress => .cyan,
+        .completed => .green,
+    };
+}
+
 pub const TaskArgs = struct {
     list: bool = false,
     subcommand: ?union(enum) {
@@ -114,15 +170,85 @@ fn list_task(allocator: std.mem.Allocator, dir: std.fs.Dir) !void {
             else => return,
         }
     };
-    std.debug.print("({d}) Tasks:\n", .{tasks.len});
+
+    if (tasks.len == 0) {
+        std.debug.print("No tasks\n", .{});
+        return;
+    }
+
+    var pending: std.ArrayList(models.Task) = .empty;
+    var in_progress: std.ArrayList(models.Task) = .empty;
+    var completed: std.ArrayList(models.Task) = .empty;
+    defer {
+        pending.deinit(allocator);
+        in_progress.deinit(allocator);
+        completed.deinit(allocator);
+    }
 
     for (tasks) |task| {
-        if (task.status == .completed) {
-            std.debug.print("    [x]: ({s}) - {s}\n", .{ task.id, task.title });
-        } else {
-            std.debug.print("    [ ]: ({s}) - {s}\n", .{ task.id, task.title });
+        switch (task.status) {
+            .pending => try pending.append(allocator, task),
+            .in_progress => try in_progress.append(allocator, task),
+            .completed => try completed.append(allocator, task),
         }
     }
+
+    if (pending.items.len > 0) {
+        std.debug.print("{s}Pending{s} ({d})\n", .{ color(.cyan), color(.reset), pending.items.len });
+        for (pending.items) |task| {
+            try print_task_details(task);
+        }
+        std.debug.print("\n", .{});
+    }
+
+    if (in_progress.items.len > 0) {
+        std.debug.print("{s}In Progress{s} ({d})\n", .{ color(.cyan), color(.reset), in_progress.items.len });
+        for (in_progress.items) |task| {
+            try print_task_details(task);
+        }
+        std.debug.print("\n", .{});
+    }
+
+    if (completed.items.len > 0) {
+        std.debug.print("{s}Completed{s} ({d})\n", .{ color(.green), color(.reset), completed.items.len });
+        for (completed.items) |task| {
+            try print_task_details(task);
+        }
+    }
+}
+
+fn print_task_details(task: models.Task) !void {
+    const c_status = status_color(task.status);
+    const c_reset = color(.reset);
+
+    const compact_id = if (task.id.len > 8) task.id[0..8] else task.id;
+
+    std.debug.print("  {s}{s}{s} ", .{ color(c_status), status_icon(task.status), c_reset });
+    if (task.priority) |p| {
+        std.debug.print("{s} ", .{priority_label(p)});
+    }
+    std.debug.print("{s}\n", .{task.title});
+
+    if (task.description) |desc| {
+        std.debug.print("      {s}📝{s} {s}\n", .{ color(.yellow), c_reset, desc });
+    }
+
+    if (task.due_date) |due| {
+        const now = std.time.timestamp();
+        if (due < now) {
+            std.debug.print("      {s}📅 Due: {d} (overdue){s}\n", .{ color(.red), due, c_reset });
+        } else {
+            std.debug.print("      {s}📅 Due: {d}{s}\n", .{ color(.yellow), due, c_reset });
+        }
+    }
+
+    if (task.status == .completed) {
+        if (task.completed_at) |completed| {
+            std.debug.print("      {s}✓ Completed: {d}{s}\n", .{ color(.green), completed, c_reset });
+        }
+    }
+
+    std.debug.print("      {s}ID: {s}{s}\n", .{ color(.yellow), compact_id, c_reset });
 }
 
 /// Marks the task matching `task_id` as completed. Returns `error.InvalidItem`
@@ -150,7 +276,7 @@ fn mark_complete(allocator: std.mem.Allocator, task_id: []const u8, dir: std.fs.
 }
 
 /// Removes the task matching `task_id` from storage. Returns `error.InvalidItem`
-/// if no task with that id exists.
+/// if no task with that id exists. Supports partial ID matching (min 4 chars).
 fn delete_task(allocator: std.mem.Allocator, task_id: []const u8, dir: std.fs.Dir) !void {
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
@@ -162,19 +288,41 @@ fn delete_task(allocator: std.mem.Allocator, task_id: []const u8, dir: std.fs.Di
     };
 
     var remaining: std.ArrayList(models.Task) = .empty;
-    var found = false;
+    defer remaining.deinit(arena_alloc);
 
-    for (tasks) |task| {
-        if (std.mem.eql(u8, task.id, task_id)) {
-            found = true;
+    var found_indices: std.ArrayList(usize) = .empty;
+    defer found_indices.deinit(arena_alloc);
+
+    for (tasks, 0..) |task, i| {
+        const match = if (task_id.len >= 4 and task.id.len >= task_id.len)
+            std.mem.eql(u8, task.id[0..task_id.len], task_id)
+        else
+            std.mem.eql(u8, task.id, task_id);
+
+        if (match) {
+            try found_indices.append(arena_alloc, i);
         } else {
             try remaining.append(arena_alloc, task);
         }
     }
 
-    if (!found) return error.InvalidItem;
+    if (found_indices.items.len == 0) {
+        std.debug.print("No task found matching '{s}'\n", .{task_id});
+        return error.InvalidItem;
+    }
+
+    if (found_indices.items.len > 1) {
+        std.debug.print("Multiple tasks match '{s}':\n", .{task_id});
+        for (found_indices.items) |idx| {
+            const task = tasks[idx];
+            std.debug.print("  - {s} [{s}]\n", .{ task.id[0..@min(8, task.id.len)], task.title });
+        }
+        std.debug.print("Use a longer ID to disambiguate.\n", .{});
+        return error.AmbiguousMatch;
+    }
 
     try storage.save_tasks(arena_alloc, dir, remaining.items);
+    std.debug.print("Task deleted: {s}\n", .{tasks[found_indices.items[0]].title});
 }
 
 test "add and list tasks" {
