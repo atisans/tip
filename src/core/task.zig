@@ -69,6 +69,9 @@ pub const TaskArgs = struct {
         delete: struct {
             id: []const u8,
         },
+        show: struct {
+            id: []const u8,
+        },
     } = null,
 
     pub const help =
@@ -86,6 +89,8 @@ pub const TaskArgs = struct {
         \\      --desc=<description>       The description of the task
         \\  delete
         \\      --id=<id>                  delete task id.
+        \\  show
+        \\      --id=<id>                  Show task details
         \\
         \\
         \\Examples:
@@ -120,6 +125,10 @@ pub fn execute_commands(T: TaskArgs) void {
             },
             .delete => |del| delete_task(allocator, del.id, dir) catch {
                 std.debug.print("Failed to delete task with id: {s}\n", .{del.id});
+                return;
+            },
+            .show => |s| show_task(allocator, s.id, dir) catch {
+                std.debug.print("Failed to show task with id: {s}\n", .{s.id});
                 return;
             },
         }
@@ -323,6 +332,106 @@ fn delete_task(allocator: std.mem.Allocator, task_id: []const u8, dir: std.fs.Di
 
     try storage.save_tasks(arena_alloc, dir, remaining.items);
     std.debug.print("Task deleted: {s}\n", .{tasks[found_indices.items[0]].title});
+}
+
+/// Displays full details of a task by ID. Supports partial ID matching (min 4 chars).
+fn show_task(allocator: std.mem.Allocator, task_id: []const u8, dir: std.fs.Dir) !void {
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+
+    const arena_alloc = arena.allocator();
+
+    const tasks = storage.load_tasks(arena_alloc, dir) catch {
+        return;
+    };
+
+    var found_indices: std.ArrayList(usize) = .empty;
+    defer found_indices.deinit(arena_alloc);
+
+    for (tasks, 0..) |task, i| {
+        const match = if (task_id.len >= 4 and task.id.len >= task_id.len)
+            std.mem.eql(u8, task.id[0..task_id.len], task_id)
+        else
+            std.mem.eql(u8, task.id, task_id);
+
+        if (match) {
+            try found_indices.append(arena_alloc, i);
+        }
+    }
+
+    if (found_indices.items.len == 0) {
+        std.debug.print("No task found matching '{s}'\n", .{task_id});
+        return error.InvalidItem;
+    }
+
+    if (found_indices.items.len > 1) {
+        std.debug.print("Multiple tasks match '{s}':\n", .{task_id});
+        for (found_indices.items) |idx| {
+            const task = tasks[idx];
+            std.debug.print("  - {s} [{s}]\n", .{ task.id[0..@min(8, task.id.len)], task.title });
+        }
+        std.debug.print("Use a longer ID to disambiguate.\n", .{});
+        return error.AmbiguousMatch;
+    }
+
+    const task = tasks[found_indices.items[0]];
+    try print_task_full_details(task);
+}
+
+fn print_task_full_details(task: models.Task) !void {
+    const c_status = status_color(task.status);
+    const c_reset = color(.reset);
+
+    std.debug.print("{s}=== Task Details ==={s}\n\n", .{ color(.cyan), c_reset });
+
+    std.debug.print("ID:          {s}\n", .{task.id});
+    std.debug.print("Title:       {s}\n", .{task.title});
+
+    if (task.description) |desc| {
+        std.debug.print("Description: {s}\n", .{desc});
+    } else {
+        std.debug.print("Description: -\n", .{});
+    }
+
+    std.debug.print("Status:      {s}{s}{s}\n", .{ color(c_status), status_icon(task.status), c_reset });
+
+    if (task.priority) |p| {
+        std.debug.print("Priority:    {s}{s}{s}\n", .{ color(priority_color(task.priority)), priority_label(p), c_reset });
+    } else {
+        std.debug.print("Priority:    -\n", .{});
+    }
+
+    if (task.due_date) |due| {
+        const now = std.time.timestamp();
+        if (due < now) {
+            std.debug.print("Due Date:    {d} (overdue)\n", .{due});
+        } else {
+            std.debug.print("Due Date:    {d}\n", .{due});
+        }
+    } else {
+        std.debug.print("Due Date:    -\n", .{});
+    }
+
+    if (task.assigned_to) |assigned| {
+        std.debug.print("Assigned To: {s}\n", .{assigned});
+    } else {
+        std.debug.print("Assigned To: -\n", .{});
+    }
+
+    std.debug.print("\n", .{});
+    std.debug.print("Created:     {d}\n", .{task.created_at});
+
+    if (task.updated_at) |updated| {
+        std.debug.print("Updated:     {d}\n", .{updated});
+    } else {
+        std.debug.print("Updated:     -\n", .{});
+    }
+
+    if (task.completed_at) |completed| {
+        std.debug.print("Completed:   {d}\n", .{completed});
+    } else {
+        std.debug.print("Completed:   -\n", .{});
+    }
 }
 
 test "add and list tasks" {
