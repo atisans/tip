@@ -8,6 +8,10 @@ pub const TaskArgs = struct {
     subcommand: ?union(enum) {
         add: struct {
             name: []const u8,
+            desc: ?[]const u8 = null,
+        },
+        delete: struct {
+            id: []const u8,
         },
     } = null,
 
@@ -21,7 +25,12 @@ pub const TaskArgs = struct {
         \\  --list                        List all tasks
         \\
         \\Commands:
-        \\  add --name=<name>              Add new task
+        \\  add
+        \\      --name=<name>              Add new task
+        \\      --desc=<description>       The description of the task
+        \\  delete
+        \\      --id=<id>                  delete task id.
+        \\
         \\
         \\Examples:
         \\  tip task --list
@@ -51,6 +60,10 @@ pub fn execute_commands(T: TaskArgs) void {
         switch (subcommand) {
             .add => |add| add_task(allocator, add.name, dir) catch {
                 std.debug.print("Failed to add task\n", .{});
+                return;
+            },
+            .delete => |del| delete_task(allocator, del.id, dir) catch {
+                std.debug.print("Failed to delete task with id: {s}\n", .{del.id});
                 return;
             },
         }
@@ -105,9 +118,9 @@ fn list_task(allocator: std.mem.Allocator, dir: std.fs.Dir) !void {
 
     for (tasks) |task| {
         if (task.status == .completed) {
-            std.debug.print("    [x]: {s}\n", .{task.title});
+            std.debug.print("    [x]: ({s}) - {s}\n", .{ task.id, task.title });
         } else {
-            std.debug.print("    [ ]: {s}\n", .{task.title});
+            std.debug.print("    [ ]: ({s}) - {s}\n", .{ task.id, task.title });
         }
     }
 }
