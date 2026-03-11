@@ -205,7 +205,7 @@ fn list_task(allocator: std.mem.Allocator, dir: std.fs.Dir) !void {
     if (pending.items.len > 0) {
         std.debug.print("{s}Pending{s} ({d})\n", .{ color(.cyan), color(.reset), pending.items.len });
         for (pending.items) |task| {
-            try print_task_details(task);
+            try print_task(task, false);
         }
         std.debug.print("\n", .{});
     }
@@ -213,7 +213,7 @@ fn list_task(allocator: std.mem.Allocator, dir: std.fs.Dir) !void {
     if (in_progress.items.len > 0) {
         std.debug.print("{s}In Progress{s} ({d})\n", .{ color(.cyan), color(.reset), in_progress.items.len });
         for (in_progress.items) |task| {
-            try print_task_details(task);
+            try print_task(task, false);
         }
         std.debug.print("\n", .{});
     }
@@ -221,43 +221,94 @@ fn list_task(allocator: std.mem.Allocator, dir: std.fs.Dir) !void {
     if (completed.items.len > 0) {
         std.debug.print("{s}Completed{s} ({d})\n", .{ color(.green), color(.reset), completed.items.len });
         for (completed.items) |task| {
-            try print_task_details(task);
+            try print_task(task, false);
         }
     }
 }
 
-fn print_task_details(task: models.Task) !void {
+fn print_task(task: models.Task, detailed: bool) !void {
     const c_status = status_color(task.status);
     const c_reset = color(.reset);
-
     const compact_id = if (task.id.len > 8) task.id[0..8] else task.id;
 
-    std.debug.print("  {s}{s}{s} ", .{ color(c_status), status_icon(task.status), c_reset });
-    if (task.priority) |p| {
-        std.debug.print("{s} ", .{priority_label(p)});
-    }
-    std.debug.print("{s}\n", .{task.title});
+    if (detailed) {
+        std.debug.print("{s}=== Task Details ==={s}\n\n", .{ color(.cyan), c_reset });
+        std.debug.print("ID:          {s}\n", .{task.id});
+        std.debug.print("Title:       {s}\n", .{task.title});
 
-    if (task.description) |desc| {
-        std.debug.print("      {s}📝{s} {s}\n", .{ color(.yellow), c_reset, desc });
-    }
-
-    if (task.due_date) |due| {
-        const now = std.time.timestamp();
-        if (due < now) {
-            std.debug.print("      {s}📅 Due: {d} (overdue){s}\n", .{ color(.red), due, c_reset });
+        if (task.description) |desc| {
+            std.debug.print("Description: {s}\n", .{desc});
         } else {
-            std.debug.print("      {s}📅 Due: {d}{s}\n", .{ color(.yellow), due, c_reset });
+            std.debug.print("Description: -\n", .{});
         }
-    }
 
-    if (task.status == .completed) {
+        std.debug.print("Status:      {s}{s}{s}\n", .{ color(c_status), status_icon(task.status), c_reset });
+
+        if (task.priority) |p| {
+            std.debug.print("Priority:    {s}{s}{s}\n", .{ color(priority_color(task.priority)), priority_label(p), c_reset });
+        } else {
+            std.debug.print("Priority:    -\n", .{});
+        }
+
+        if (task.due_date) |due| {
+            const now = std.time.timestamp();
+            if (due < now) {
+                std.debug.print("Due Date:    {d} (overdue)\n", .{due});
+            } else {
+                std.debug.print("Due Date:    {d}\n", .{due});
+            }
+        } else {
+            std.debug.print("Due Date:    -\n", .{});
+        }
+
+        if (task.assigned_to) |assigned| {
+            std.debug.print("Assigned To: {s}\n", .{assigned});
+        } else {
+            std.debug.print("Assigned To: -\n", .{});
+        }
+
+        std.debug.print("\n", .{});
+        std.debug.print("Created:     {d}\n", .{task.created_at});
+
+        if (task.updated_at) |updated| {
+            std.debug.print("Updated:     {d}\n", .{updated});
+        } else {
+            std.debug.print("Updated:     -\n", .{});
+        }
+
         if (task.completed_at) |completed| {
-            std.debug.print("      {s}✓ Completed: {d}{s}\n", .{ color(.green), completed, c_reset });
+            std.debug.print("Completed:   {d}\n", .{completed});
+        } else {
+            std.debug.print("Completed:   -\n", .{});
         }
-    }
+    } else {
+        std.debug.print("  {s}{s}{s} ", .{ color(c_status), status_icon(task.status), c_reset });
+        if (task.priority) |p| {
+            std.debug.print("{s} ", .{priority_label(p)});
+        }
+        std.debug.print("{s}\n", .{task.title});
 
-    std.debug.print("      {s}ID: {s}{s}\n", .{ color(.yellow), compact_id, c_reset });
+        if (task.description) |desc| {
+            std.debug.print("      {s}📝{s} {s}\n", .{ color(.yellow), c_reset, desc });
+        }
+
+        if (task.due_date) |due| {
+            const now = std.time.timestamp();
+            if (due < now) {
+                std.debug.print("      {s}📅 Due: {d} (overdue){s}\n", .{ color(.red), due, c_reset });
+            } else {
+                std.debug.print("      {s}📅 Due: {d}{s}\n", .{ color(.yellow), due, c_reset });
+            }
+        }
+
+        if (task.status == .completed) {
+            if (task.completed_at) |completed| {
+                std.debug.print("      {s}✓ Completed: {d}{s}\n", .{ color(.green), completed, c_reset });
+            }
+        }
+
+        std.debug.print("      {s}ID: {s}{s}\n", .{ color(.yellow), compact_id, c_reset });
+    }
 }
 
 /// Marks the task matching `task_id` as completed. Returns `error.InvalidItem`
@@ -375,63 +426,7 @@ fn show_task(allocator: std.mem.Allocator, task_id: []const u8, dir: std.fs.Dir)
     }
 
     const task = tasks[found_indices.items[0]];
-    try print_task_full_details(task);
-}
-
-fn print_task_full_details(task: models.Task) !void {
-    const c_status = status_color(task.status);
-    const c_reset = color(.reset);
-
-    std.debug.print("{s}=== Task Details ==={s}\n\n", .{ color(.cyan), c_reset });
-
-    std.debug.print("ID:          {s}\n", .{task.id});
-    std.debug.print("Title:       {s}\n", .{task.title});
-
-    if (task.description) |desc| {
-        std.debug.print("Description: {s}\n", .{desc});
-    } else {
-        std.debug.print("Description: -\n", .{});
-    }
-
-    std.debug.print("Status:      {s}{s}{s}\n", .{ color(c_status), status_icon(task.status), c_reset });
-
-    if (task.priority) |p| {
-        std.debug.print("Priority:    {s}{s}{s}\n", .{ color(priority_color(task.priority)), priority_label(p), c_reset });
-    } else {
-        std.debug.print("Priority:    -\n", .{});
-    }
-
-    if (task.due_date) |due| {
-        const now = std.time.timestamp();
-        if (due < now) {
-            std.debug.print("Due Date:    {d} (overdue)\n", .{due});
-        } else {
-            std.debug.print("Due Date:    {d}\n", .{due});
-        }
-    } else {
-        std.debug.print("Due Date:    -\n", .{});
-    }
-
-    if (task.assigned_to) |assigned| {
-        std.debug.print("Assigned To: {s}\n", .{assigned});
-    } else {
-        std.debug.print("Assigned To: -\n", .{});
-    }
-
-    std.debug.print("\n", .{});
-    std.debug.print("Created:     {d}\n", .{task.created_at});
-
-    if (task.updated_at) |updated| {
-        std.debug.print("Updated:     {d}\n", .{updated});
-    } else {
-        std.debug.print("Updated:     -\n", .{});
-    }
-
-    if (task.completed_at) |completed| {
-        std.debug.print("Completed:   {d}\n", .{completed});
-    } else {
-        std.debug.print("Completed:   -\n", .{});
-    }
+    try print_task(task, true);
 }
 
 test "add and list tasks" {
